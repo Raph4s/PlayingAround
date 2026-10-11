@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create("user_resets", function (Blueprint $table) {
             $table->string("id", 64);
             $table->integer("user_id");
-            $table->integer("token", 64)->unique();
+            $table->string("token", 64)->unique()->nullable();
             $table->integer("code", 9)->unique();
             $table->timestampTz("expire_at");
             $table->timestampsTz();
