@@ -1,0 +1,270 @@
+openapi: 3.1.0
+info:
+  title: JogjaCenter Backend API
+  version: 1.0.0
+  description: |-
+    HTTP API for authentication and password recovery.
+    All endpoints are served under `/api` and return JSON.
+servers:
+  - url: /api
+    description: Current host
+tags:
+  - name: Authentication
+    description: Login and session token operations
+  - name: Password recovery
+    description: Request and complete a password reset
+paths:
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Log in and create an API token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: correct-horse-battery
+      responses:
+        '200':
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token:
+                    type: string
+                    description: Plain text Sanctum API token. Send it as a Bearer token.
+        '401':
+          description: Email or password is incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Revoke the current API token
+      security:
+        - sanctumBearer: []
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: Logged out
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /auth/request-reset:
+    post:
+      tags: [Password recovery]
+      operationId: requestPasswordReset
+      summary: Request a password reset email
+      description: |-
+        When the email belongs to a user, queues a reset email and returns a
+        64-character reset ID. A still-existing reset ID may be supplied to
+        check whether the request remains valid. Reset requests expire after
+        30 minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                id:
+                  type: string
+                  minLength: 64
+                  maxLength: 64
+                  description: Optional ID from an earlier reset request.
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+      responses:
+        '200':
+          description: An existing reset request is still valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: Your password reset request is still valid.
+        '201':
+          description: Reset email queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token:
+                    type: string
+                    minLength: 64
+                    maxLength: 64
+                    description: Reset request ID. Provide as `id` to the validate-reset and reset endpoints.
+        '404':
+          description: No registered user has this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/validate-reset:
+    post:
+      tags: [Password recovery]
+      operationId: validatePasswordReset
+      summary: Validate the code from the reset email
+      description: The code is a 9-digit string. On success, returns a 64-character token for the reset operation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, code]
+              properties:
+                id:
+                  type: string
+                  minLength: 64
+                  maxLength: 64
+                  description: Reset request ID returned by request-reset.
+                code:
+                  type: string
+                  pattern: '^\\d{9}$'
+                  example: '123456789'
+      responses:
+        '201':
+          description: Code accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token:
+                    type: string
+                    minLength: 64
+                    maxLength: 64
+                    description: Supply as a Bearer token to reset the password.
+        '404':
+          description: Reset request or code is invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/reset:
+    post:
+      tags: [Password recovery]
+      operationId: resetPassword
+      summary: Set a new password
+      description: The reset token returned by validate-reset must be sent in the Authorization header. The reset request is deleted after a successful password change.
+      security:
+        - resetBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, password]
+              properties:
+                id:
+                  type: string
+                  minLength: 64
+                  maxLength: 64
+                  description: Reset request ID returned by request-reset.
+                password:
+                  type: string
+                  format: password
+                  description: New password. The current API does not impose additional password validation rules.
+      responses:
+        '200':
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: Your password is successfully applied.
+        '404':
+          description: Reset request or token is invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  securitySchemes:
+    sanctumBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum token
+      description: API token returned by `/auth/login`.
+    resetBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Reset token
+      description: Password reset token returned by `/auth/validate-reset`.
+  schemas:
+    Message:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ValidationError:
+      type: object
+      description: Laravel validation error response
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+          example: The given data was invalid.
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+  responses:
+    ValidationError:
+      description: Request fields failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+    Unauthenticated:
+      description: Missing or invalid Sanctum API token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
