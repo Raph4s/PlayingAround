@@ -16,13 +16,17 @@ class RequireRole
     public function handle(
         Request $request,
         Closure $next,
-        string $role,
+        string $roles,
     ): Response {
         $user = $request->user();
+        $requiredRoles = explode("|", $roles);
 
-        if (!$user || !$user->roles()->where("name", $role)->exists()) {
+        if (
+            !$user ||
+            !$user->roles()->whereIn("name", $requiredRoles)->exists()
+        ) {
             return response()->json(
-                ["message" => "Forbidden"],
+                ["message" => "Forbidden: Insufficient permissions"],
                 Response::HTTP_FORBIDDEN,
             );
         }

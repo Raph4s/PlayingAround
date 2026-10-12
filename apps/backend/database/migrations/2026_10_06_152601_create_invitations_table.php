@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->integer("invited_by");
             $table->integer("role_id");
             $table->timestampTz("expire_at");
-            $table->timestampTz("accepted_at");
+            $table->timestampTz("accepted_at")->nullable();
             $table->timestampsTz();
 
             $table->primary("id");
