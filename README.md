@@ -1,13 +1,3 @@
-# Jogja Center
-
-## What is this?
-
-Website
-
-## Planned features
-
-idk
-
 ## Project structure
 
 ```bash
