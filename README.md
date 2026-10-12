@@ -56,27 +56,3 @@
 ├── README.md
 └── .gitignore
 ```
-
-## How to contribute?
-
-### Branch naming
-
-using this format, `github username/(feature/fix/etc)/name`
-
-if want to merge, pull request to dev first, main branch is only touchable for the code owner (thehaidarbahzi)
-
-### Commit message
-
-please use a consise and easy to understand sentence, for example:
-
-```
-adding hero section on landing page, features consist of:
-
-1. CTA button
-2. image
-3. etc.
-```
-
-## How to maintain?
-
-its not developed yet bruh.
