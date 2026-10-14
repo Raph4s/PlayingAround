@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->string("id", 64);
             $table->integer("user_id");
             $table->string("token", 64)->unique()->nullable();
-            $table->integer("code")->unique();
+            $table->integer("code", 9)->unique();
             $table->timestampTz("expire_at");
             $table->timestampsTz();
 

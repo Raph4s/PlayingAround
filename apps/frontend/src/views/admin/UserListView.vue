@@ -26,7 +26,7 @@ export interface UserAdminItem {
   isExample?: boolean
 }
 
-// Data mock sesuai tampilan Sumber 12
+// 3 Roles: Superadmin, Admin, User
 const users = ref<UserAdminItem[]>([
   {
     id: 1,
@@ -34,7 +34,7 @@ const users = ref<UserAdminItem[]>([
     name: 'Ayu Prameswari',
     username: '—',
     email: 'ayu.prameswari@jogjakota.go.id',
-    role: 'Super Admin',
+    role: 'Superadmin',
     statusInvite: 'Aktif',
   },
   {
@@ -52,7 +52,7 @@ const users = ref<UserAdminItem[]>([
     name: 'Citra Ningrum',
     username: '—',
     email: 'citra.ningrum@jogjakota.go.id',
-    role: 'Editor',
+    role: 'User',
     statusInvite: 'Belum Aktif',
   },
   {
@@ -70,7 +70,7 @@ const users = ref<UserAdminItem[]>([
     name: 'Eka Lestari',
     username: '—',
     email: 'eka.lestari@jogjakota.go.id',
-    role: 'Viewer',
+    role: 'User',
     statusInvite: 'Belum Aktif',
   },
   {
@@ -155,18 +155,18 @@ function handleResendInvite(email: string) {
           <p class="text-xs text-slate-500">Pengguna aktif</p>
           <div class="flex items-baseline gap-2 mt-1">
             <span class="text-2xl font-bold text-slate-900">24</span>
-            <span class="text-[11px] text-slate-400 font-normal">86% dari seluruh akun</span>
+            <span class="text-[11px] text-emerald-600 font-medium">85% dari total</span>
           </div>
         </div>
-        <div class="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+        <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
           <UserCheck class="h-5 w-5" />
         </div>
       </div>
 
-      <!-- Card 3: Undangan Tertunda -->
+      <!-- Card 3: Undangan Pending -->
       <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs flex items-center justify-between">
         <div>
-          <p class="text-xs text-slate-500">Undangan tertunda</p>
+          <p class="text-xs text-slate-500">Undangan pending</p>
           <div class="flex items-baseline gap-2 mt-1">
             <span class="text-2xl font-bold text-slate-900">4</span>
             <span class="text-[11px] text-slate-400 font-normal">Perlu aktivasi email</span>
@@ -191,7 +191,7 @@ function handleResendInvite(email: string) {
         />
       </div>
 
-      <!-- Filter Role -->
+      <!-- Filter Role (3 Roles: Superadmin, Admin, User) -->
       <div class="w-full sm:w-48">
         <label class="block text-xs font-semibold text-slate-700 mb-1.5">Role</label>
         <div class="relative">
@@ -200,10 +200,9 @@ function handleResendInvite(email: string) {
               class="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3.5 py-2 pr-8 text-xs text-slate-700 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition shadow-2xs cursor-pointer"
           >
             <option value="Semua role">Semua role</option>
-            <option value="Super Admin">Super Admin</option>
+            <option value="Superadmin">Superadmin</option>
             <option value="Admin">Admin</option>
-            <option value="Editor">Editor</option>
-            <option value="Viewer">Viewer</option>
+            <option value="User">User</option>
           </select>
           <ChevronDown class="absolute right-3 top-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
         </div>
@@ -326,38 +325,38 @@ function handleResendInvite(email: string) {
         </table>
       </div>
 
-      <!-- Footer Navigasi & Pagination -->
-      <div class="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 p-4 border-t border-slate-100 gap-3 select-none">
-        <span>Menampilkan 1–5 dari 28 pengguna · 1 baris contoh</span>
-
+      <!-- Pagination Footer -->
+      <div class="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+        <span>Menampilkan 1–6 dari 28 pengguna</span>
         <div class="flex items-center gap-1">
           <button
               type="button"
-              class="p-1.5 rounded-md border border-slate-200 text-slate-400 hover:text-slate-600 transition cursor-pointer disabled:opacity-50"
+              class="p-1.5 rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 cursor-pointer disabled:opacity-40"
+              disabled
           >
             <ChevronLeft class="h-3.5 w-3.5" />
           </button>
           <button
               type="button"
-              class="w-7 h-7 rounded-md bg-[#2557c7] text-white font-medium flex items-center justify-center text-xs"
+              class="w-7 h-7 rounded-md bg-blue-600 text-white font-semibold flex items-center justify-center text-xs"
           >
             1
           </button>
           <button
               type="button"
-              class="w-7 h-7 rounded-md hover:bg-slate-100 text-slate-700 font-medium flex items-center justify-center text-xs cursor-pointer"
+              class="w-7 h-7 rounded-md text-slate-600 hover:bg-slate-100 font-semibold flex items-center justify-center text-xs cursor-pointer"
           >
             2
           </button>
           <button
               type="button"
-              class="w-7 h-7 rounded-md hover:bg-slate-100 text-slate-700 font-medium flex items-center justify-center text-xs cursor-pointer"
+              class="w-7 h-7 rounded-md text-slate-600 hover:bg-slate-100 font-semibold flex items-center justify-center text-xs cursor-pointer"
           >
             3
           </button>
           <button
               type="button"
-              class="p-1.5 rounded-md border border-slate-200 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+              class="p-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
           >
             <ChevronRight class="h-3.5 w-3.5" />
           </button>

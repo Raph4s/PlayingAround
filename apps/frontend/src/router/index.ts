@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import PublicLayout from '@/layouts/PublicLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { normalizeRole } from '@/composables/useAuth'
 
 const routes = [
     // Public
@@ -42,7 +43,7 @@ const routes = [
         component: () => import('@/views/auth/ResetPasswordView.vue'),
     },
     {
-        path: '/activate',
+        path: '/activate/:id?',
         name: 'activate',
         component: () => import('@/views/auth/ActivateAccountView.vue'),
     },
@@ -68,7 +69,7 @@ const routes = [
                 component: () => import('@/views/DashboardDetailView.vue'),
             },
 
-            // Modul Kelola User Admin
+            // Modul Kelola User Admin (Superadmin only)
             {
                 path: 'admin/users',
                 name: 'admin-users',
@@ -86,6 +87,8 @@ const routes = [
             },
 
             // Modul Kelola Parent (Kategori Sektor)
+            // Superadmin: Create, Update, Delete, View
+            // Admin: Update, Delete, View (Create is hidden & forbidden)
             {
                 path: 'admin/parents',
                 name: 'admin-parents',
@@ -102,7 +105,7 @@ const routes = [
                 component: () => import('@/views/admin/ParentEditView.vue'),
             },
 
-            // Modul Kelola Dashboard
+            // Modul Kelola Dashboard (Superadmin & Admin)
             {
                 path: 'admin/dashboards',
                 name: 'admin-dashboards',
@@ -119,7 +122,7 @@ const routes = [
                 component: () => import('@/views/admin/DashboardEditView.vue'),
             },
 
-            // Modul Konfigurasi Superset
+            // Modul Konfigurasi Superset (Superadmin & Admin)
             {
                 path: 'admin/superset',
                 name: 'admin-superset',
@@ -136,21 +139,21 @@ const routes = [
                 component: () => import('@/views/admin/SupersetEditView.vue'),
             },
 
-            // Modul Preferensi Akun
+            // Modul Preferensi Akun (Superadmin only)
             {
                 path: 'admin/preferences',
                 name: 'admin-preferences',
                 component: () => import('@/views/admin/PreferencesView.vue'),
             },
 
-            // Modul Hak Akses & Peran
+            // Modul Hak Akses & Peran (Superadmin only)
             {
                 path: 'admin/roles',
                 name: 'admin-roles',
                 component: () => import('@/views/admin/RolesManagementView.vue'),
             },
 
-            // Modul Log Aktivitas & Audit Trail
+            // Modul Log Aktivitas & Audit Trail (Superadmin & Admin)
             {
                 path: 'admin/logs',
                 name: 'admin-logs',
@@ -168,6 +171,52 @@ const routes = [
 export const router = createRouter({
     history: createWebHistory(),
     routes,
+})
+
+// Route Authorization Guard
+router.beforeEach((to, _from, next) => {
+    const token = localStorage.getItem('token')
+    const userRaw = localStorage.getItem('user')
+    let role = 'User'
+
+    if (userRaw) {
+        try {
+            const parsed = JSON.parse(userRaw)
+            role = normalizeRole(parsed.role)
+        } catch {
+            // fallback to User
+        }
+    }
+
+    const isAdminRoute = to.path.startsWith('/admin')
+
+    // 1. Unauthenticated users cannot access any /admin/* route
+    if (isAdminRoute && !token) {
+        return next({ path: '/login', query: { redirect: to.fullPath } })
+    }
+
+    // 2. User role has read-only access limited strictly to login and monitoring dashboards (/dashboard*)
+    // All /admin/* features are hidden & inaccessible
+    if (isAdminRoute && role === 'User') {
+        return next('/dashboard')
+    }
+
+    // 3. Admin role:
+    // Can access: /admin/parents (except create), /admin/dashboards, /admin/superset, /admin/logs
+    // Forbidden: /admin/users, /admin/roles, /admin/preferences, /admin/parents/create
+    if (isAdminRoute && role === 'Admin') {
+        if (
+            to.path.startsWith('/admin/users') ||
+            to.path.startsWith('/admin/roles') ||
+            to.path.startsWith('/admin/preferences') ||
+            to.path === '/admin/parents/create'
+        ) {
+            return next('/dashboard')
+        }
+    }
+
+    // 4. Superadmin has full access to everything
+    next()
 })
 
 export default router

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   Sparkles,
   Palette,
@@ -15,6 +15,7 @@ import {
   Eye,
   Check,
 } from 'lucide-vue-next'
+import { preferenceService, type PreferenceItem } from '@/services/preferenceService'
 
 type PreferenceTab = 'identitas' | 'warna' | 'banner' | 'footer' | 'metadata'
 const activeTab = ref<PreferenceTab>('identitas')
@@ -22,6 +23,7 @@ const activeTab = ref<PreferenceTab>('identitas')
 const isSaving = ref(false)
 const saveSuccess = ref(false)
 const isDirty = ref(false)
+const prefList = ref<PreferenceItem[]>([])
 
 // 1. Identitas Form
 const identitasForm = ref({
@@ -83,22 +85,70 @@ const metadataForm = ref({
   keywords: 'data jogja, dashboard publik, pemda diy',
 })
 
+onMounted(async () => {
+  try {
+    const list = await preferenceService.getAll()
+    prefList.value = list
+    for (const item of list) {
+      try {
+        const parsed = JSON.parse(item.value)
+        if (item.key === 'identitas' && typeof parsed === 'object') {
+          identitasForm.value = { ...identitasForm.value, ...parsed }
+        } else if (item.key === 'warna' && typeof parsed === 'object') {
+          warnaForm.value = { ...warnaForm.value, ...parsed }
+        } else if (item.key === 'banner' && typeof parsed === 'object') {
+          bannerForm.value = { ...bannerForm.value, ...parsed }
+        } else if (item.key === 'footer' && typeof parsed === 'object') {
+          footerForm.value = { ...footerForm.value, ...parsed }
+        } else if (item.key === 'metadata' && typeof parsed === 'object') {
+          metadataForm.value = { ...metadataForm.value, ...parsed }
+        }
+      } catch {
+        // Plain string fallback
+      }
+    }
+  } catch {
+    // Keep initial fallback values
+  }
+})
+
 function markDirty() {
   isDirty.value = true
 }
 
-function handleSave() {
+async function handleSave() {
   if (!colorHexValid.value && activeTab.value === 'warna') return
 
   isSaving.value = true
-  setTimeout(() => {
-    isSaving.value = false
+  try {
+    if (activeTab.value === 'identitas') {
+      await preferenceService.upsert('identitas', identitasForm.value, prefList.value)
+    } else if (activeTab.value === 'warna') {
+      await preferenceService.upsert('warna', warnaForm.value, prefList.value)
+    } else if (activeTab.value === 'banner') {
+      await preferenceService.upsert('banner', bannerForm.value, prefList.value)
+    } else if (activeTab.value === 'footer') {
+      await preferenceService.upsert('footer', footerForm.value, prefList.value)
+    } else if (activeTab.value === 'metadata') {
+      await preferenceService.upsert('metadata', metadataForm.value, prefList.value)
+    }
+
+    try {
+      prefList.value = await preferenceService.getAll()
+    } catch {
+      // cache refresh
+    }
+
     isDirty.value = false
     saveSuccess.value = true
     setTimeout(() => {
       saveSuccess.value = false
     }, 2500)
-  }, 400)
+  } catch (err) {
+    console.error('Failed to save preference:', err)
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function handleResetWarna() {
@@ -108,6 +158,7 @@ function handleResetWarna() {
     textColor: '#000000',
     bgColor: '#F8FAFC',
   }
+  markDirty()
 }
 </script>
 
@@ -271,7 +322,7 @@ function handleResetWarna() {
               </div>
               <div>
                 <div class="text-xs font-semibold text-slate-900">Logo utama</div>
-                <div class="text-[11px] text-slate-500">{{ identitasForm.logoName }} • {{ identitasForm.logoSize }}</div>
+                <div class="text-[11px] text-slate-500">{{ identitasForm.logoName }} â€¢ {{ identitasForm.logoSize }}</div>
               </div>
             </div>
             <button
@@ -286,11 +337,11 @@ function handleResetWarna() {
           <div class="flex items-center justify-between p-3.5 rounded-lg border border-slate-200 bg-slate-50/60">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-700 text-xs font-bold">
-                🏛️
+                ðŸ›ï¸
               </div>
               <div>
                 <div class="text-xs font-semibold text-slate-900">Favicon</div>
-                <div class="text-[11px] text-slate-500">{{ identitasForm.faviconName }} • {{ identitasForm.faviconSize }}</div>
+                <div class="text-[11px] text-slate-500">{{ identitasForm.faviconName }} â€¢ {{ identitasForm.faviconSize }}</div>
               </div>
             </div>
             <button
@@ -317,7 +368,7 @@ function handleResetWarna() {
           <div class="p-3 bg-slate-100 rounded-lg border border-slate-200">
             <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white rounded-t border-t border-x border-slate-200 text-[11px] font-medium text-slate-700 shadow-2xs">
               <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-              <span class="truncate max-w-[200px]">{{ identitasForm.appName }} — Portal Data Terpadu</span>
+              <span class="truncate max-w-[200px]">{{ identitasForm.appName }} â€” Portal Data Terpadu</span>
             </div>
           </div>
 
@@ -534,10 +585,10 @@ function handleResetWarna() {
           <UploadCloud class="h-6 w-6 text-slate-400 mx-auto" />
           <div class="text-xs font-semibold text-slate-700">Unggah atau ganti gambar</div>
           <p class="text-[11px] text-slate-500">
-            Rekomendasi: JPG/WebP, 1920×720 px, fokus objek berada di sisi kanan (maks. 5 MB).
+            Rekomendasi: JPG/WebP, 1920Ã—720 px, fokus objek berada di sisi kanan (maks. 5 MB).
           </p>
           <div class="text-[11px] font-mono text-blue-600 font-medium">
-            {{ bannerForm.imageName }} • {{ bannerForm.imageSize }}
+            {{ bannerForm.imageName }} â€¢ {{ bannerForm.imageSize }}
           </div>
         </div>
 
@@ -765,7 +816,7 @@ function handleResetWarna() {
             <div class="space-y-1 pt-2 border-t border-slate-800 text-[11px]">
               <div class="font-bold text-white">Hubungi kami:</div>
               <p class="text-slate-400">{{ footerForm.address }}</p>
-              <p class="text-slate-400">{{ footerForm.phone }} • {{ footerForm.email }}</p>
+              <p class="text-slate-400">{{ footerForm.phone }} â€¢ {{ footerForm.email }}</p>
             </div>
 
             <div class="pt-3 border-t border-slate-800 text-[10px] text-slate-500 text-center">
@@ -840,7 +891,7 @@ function handleResetWarna() {
             <div class="flex items-center gap-2 text-[11px] text-slate-600">
               <div class="w-4 h-4 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-[8px]">JC</div>
               <span class="font-semibold text-slate-800">Jogja Center</span>
-              <span class="text-slate-400">› https://jogjacenter.jogjaprov.go.id</span>
+              <span class="text-slate-400">â€º https://jogjacenter.jogjaprov.go.id</span>
             </div>
             <h4 class="text-sm font-semibold text-blue-700 hover:underline cursor-pointer">
               {{ metadataForm.title }}
@@ -860,7 +911,7 @@ function handleResetWarna() {
 
           <div class="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
             <div class="h-24 bg-gradient-to-r from-blue-700 to-indigo-800 flex items-center justify-center text-white text-xs font-bold">
-              DATA TERBUKA DIY • Jogja Center
+              DATA TERBUKA DIY â€¢ Jogja Center
             </div>
             <div class="p-3 bg-white space-y-1">
               <span class="text-[10px] font-bold text-slate-400 uppercase">JOGJACENTER.JOGJAPROV.GO.ID</span>

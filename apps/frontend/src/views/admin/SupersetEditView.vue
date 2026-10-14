@@ -1,17 +1,35 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { ArrowLeft, CheckCircle2, Trash2, RefreshCw } from 'lucide-vue-next'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ArrowLeft, CheckCircle2, Trash2, RefreshCw, AlertCircle } from 'lucide-vue-next'
+import { supersetService } from '@/services/supersetService'
 
 const router = useRouter()
+const route = useRoute()
 
+const id = route.params.id as string
 const host = ref('https://bi.jogjakota.go.id')
 const username = ref('svc_jogjacenter_prod')
-const password = ref('••••••••••••••••••••••')
+const password = ref('')
 
 const isTesting = ref(false)
 const testStatus = ref<'none' | 'success' | 'failed'>('none')
 const isSaving = ref(false)
+const errorMessage = ref('')
+
+onMounted(async () => {
+  if (id) {
+    try {
+      const data = await supersetService.getById(id)
+      if (data) {
+        host.value = data.host
+        username.value = data.username
+      }
+    } catch {
+      // keep fallback
+    }
+  }
+})
 
 function handleTestConnection() {
   isTesting.value = true
@@ -23,16 +41,35 @@ function handleTestConnection() {
   }, 600)
 }
 
-function handleSave() {
+async function handleSave() {
   isSaving.value = true
-  setTimeout(() => {
-    isSaving.value = false
+  errorMessage.value = ''
+
+  try {
+    const payload: any = {
+      id,
+      host: host.value,
+      username: username.value,
+    }
+    if (password.value) {
+      payload.password = password.value
+    }
+    await supersetService.update(payload)
     router.push('/admin/superset')
-  }, 400)
+  } catch (err: any) {
+    errorMessage.value = err.response?.data?.message || 'Gagal memperbarui koneksi Superset.'
+  } finally {
+    isSaving.value = false
+  }
 }
 
-function handleDelete() {
+async function handleDelete() {
   if (confirm(`Apakah Anda yakin ingin menghapus koneksi "${host.value}"?`)) {
+    try {
+      await supersetService.delete(id)
+    } catch {
+      // ignore
+    }
     router.push('/admin/superset')
   }
 }
@@ -75,6 +112,15 @@ function handleDelete() {
 
     <!-- Form Container -->
     <form @submit.prevent="handleSave" class="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-2xs space-y-5">
+      <!-- Error Feedback Banner -->
+      <div
+        v-if="errorMessage"
+        class="flex items-center gap-2 p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium"
+      >
+        <AlertCircle class="h-4 w-4 text-rose-600 shrink-0" />
+        <span>{{ errorMessage }}</span>
+      </div>
+
       <!-- Test Connection Feedback Banner -->
       <div
         v-if="testStatus === 'success'"
@@ -113,12 +159,12 @@ function handleDelete() {
       <!-- Password Input -->
       <div>
         <label class="block text-xs font-semibold text-slate-700 mb-1.5">
-          Password <span class="text-rose-500">*</span>
+          Password (kosongkan jika tidak ingin mengubah)
         </label>
         <input
           v-model="password"
           type="password"
-          required
+          placeholder="••••••••••••••••••••••"
           class="w-full px-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white transition"
         />
       </div>
@@ -150,9 +196,10 @@ function handleDelete() {
         <button
           type="submit"
           :disabled="isSaving"
-          class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#2557c7] text-white text-xs font-semibold hover:bg-blue-700 active:bg-blue-800 shadow-2xs transition cursor-pointer disabled:opacity-70"
+          class="rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-5 py-2.5 text-xs font-semibold transition shadow-2xs cursor-pointer disabled:opacity-70"
         >
-          <span>{{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}</span>
+          <span v-if="!isSaving">Simpan perubahan</span>
+          <span v-else>Menyimpan...</span>
         </button>
       </div>
     </form>

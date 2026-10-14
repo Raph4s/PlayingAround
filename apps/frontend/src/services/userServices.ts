@@ -3,14 +3,14 @@ import type { AdminUserItem, InviteUserPayload } from '@/types/user'
 
 export const userService = {
     async getUsers(): Promise<AdminUserItem[]> {
-        // Mock data matching Figma "Kelola User Admin":
+        // Mock data matching 3 roles: Superadmin, Admin, User
         return [
             {
                 id: 1,
                 initials: 'AP',
                 name: 'Ayu Prameswari',
                 email: 'ayu.prameswari@jogjakota.go.id',
-                role: 'Super Admin',
+                role: 'Superadmin',
                 unitKerja: 'Dinas Kominfo',
                 status: 'Aktif',
                 joinedDate: '12 Sep 2026',
@@ -30,7 +30,7 @@ export const userService = {
                 initials: 'CN',
                 name: 'Citra Ningrum',
                 email: 'citra.ningrum@jogjakota.go.id',
-                role: 'Editor',
+                role: 'User',
                 unitKerja: 'Dinas Kesehatan',
                 status: 'Menunggu',
                 joinedDate: '03 Sep 2026',
@@ -50,7 +50,7 @@ export const userService = {
                 initials: 'EL',
                 name: 'Eka Lestari',
                 email: 'eka.lestari@jogjakota.go.id',
-                role: 'Viewer',
+                role: 'User',
                 unitKerja: 'Sekretariat Daerah',
                 status: 'Nonaktif',
                 joinedDate: '19 Agu 2026',
@@ -58,12 +58,33 @@ export const userService = {
         ]
     },
 
-    async inviteUser(payload: InviteUserPayload): Promise<void> {
-        // Backend endpoint: POST /api/app/user/invite
-        await apiClient.post('/app/user/invite', {
+    async inviteUser(payload: InviteUserPayload): Promise<{ message?: string }> {
+        let inviterId = 1
+        try {
+            const raw = localStorage.getItem('user')
+            if (raw) {
+                const parsed = JSON.parse(raw)
+                if (parsed.id) inviterId = Number(parsed.id)
+            }
+        } catch {
+            // fallback
+        }
+
+        const roleNormalized = (payload.role || '').toLowerCase()
+        let roleId = 3 // 3: user
+        if (roleNormalized.includes('super')) {
+            roleId = 1 // 1: superadmin
+        } else if (roleNormalized.includes('admin')) {
+            roleId = 2 // 2: admin
+        } else {
+            roleId = 3 // 3: user
+        }
+
+        const response = await apiClient.post<{ message: string }>('/app/user/invite', {
             email: payload.email,
-            role: payload.role === 'Superadmin' ? 1 : 2,
-            inviter: 1,
+            role: roleId,
+            inviter: inviterId,
         })
+        return response.data
     },
 }

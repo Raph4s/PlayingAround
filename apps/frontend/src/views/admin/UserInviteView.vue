@@ -1,26 +1,43 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { UserPlus, Mail, ChevronDown, ArrowLeft } from 'lucide-vue-next'
+import { UserPlus, Mail, ChevronDown, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-vue-next'
+import { userService } from '@/services/userServices'
 
 const router = useRouter()
 
 const email = ref('')
 const role = ref('')
 const isLoading = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
 
 function handleBack() {
   router.push('/admin/users')
 }
 
-function handleSubmit() {
+async function handleSubmit() {
+  errorMessage.value = ''
+  successMessage.value = ''
+
   if (!email.value || !role.value) return
   isLoading.value = true
 
-  setTimeout(() => {
+  try {
+    await userService.inviteUser({
+      email: email.value,
+      role: role.value,
+    })
+    successMessage.value = 'Undangan berhasil dikirim ke alamat email!'
+    setTimeout(() => {
+      router.push('/admin/users')
+    }, 1200)
+  } catch (error: any) {
+    errorMessage.value =
+      error.response?.data?.message || 'Gagal mengirim undangan. Periksa kembali email dan hak akses akun Anda.'
+  } finally {
     isLoading.value = false
-    router.push('/admin/users')
-  }, 400)
+  }
 }
 </script>
 
@@ -62,6 +79,23 @@ function handleSubmit() {
         </div>
       </div>
 
+      <!-- Feedback Banners -->
+      <div
+        v-if="successMessage"
+        class="flex items-center gap-2 p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium"
+      >
+        <CheckCircle2 class="h-4 w-4 text-emerald-600 shrink-0" />
+        <span>{{ successMessage }}</span>
+      </div>
+
+      <div
+        v-if="errorMessage"
+        class="flex items-center gap-2 p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium"
+      >
+        <AlertCircle class="h-4 w-4 text-rose-600 shrink-0" />
+        <span>{{ errorMessage }}</span>
+      </div>
+
       <form @submit.prevent="handleSubmit" class="space-y-5">
         <!-- Input Email -->
         <div>
@@ -76,7 +110,7 @@ function handleSubmit() {
           <p class="text-[11px] text-slate-400 mt-1">Gunakan email kedinasan aktif.</p>
         </div>
 
-        <!-- Input Role -->
+        <!-- Input Role (3 Roles: Superadmin, Admin, User) -->
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1.5">Role</label>
           <div class="relative">
@@ -86,11 +120,9 @@ function handleSubmit() {
               class="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 pr-8 text-xs text-slate-700 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition shadow-2xs cursor-pointer"
             >
               <option value="" disabled selected>Pilih role pengguna</option>
+              <option value="Superadmin">Superadmin</option>
               <option value="Admin">Admin</option>
-              <option value="Admin Konten">Admin Konten</option>
-              <option value="Analis Data">Analis Data</option>
-              <option value="Editor">Editor</option>
-              <option value="Viewer">Viewer</option>
+              <option value="User">User</option>
             </select>
             <ChevronDown class="absolute right-3 top-3 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           </div>
@@ -111,11 +143,10 @@ function handleSubmit() {
           >
             Batal
           </button>
-
           <button
             type="submit"
             :disabled="isLoading"
-            class="rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-5 py-2.5 text-xs font-semibold transition shadow-2xs cursor-pointer disabled:opacity-70"
+            class="rounded-lg bg-[#2557c7] px-6 py-2.5 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700 active:bg-blue-800 transition cursor-pointer disabled:opacity-60"
           >
             <span v-if="!isLoading">Kirim Undangan</span>
             <span v-else>Mengirim...</span>

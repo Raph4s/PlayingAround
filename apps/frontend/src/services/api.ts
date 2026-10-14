@@ -10,11 +10,11 @@ const apiClient: AxiosInstance = axios.create({
     timeout: 10000,
 })
 
-// Request Interceptor: Attach Auth Token from localStorage
+// Request Interceptor: Attach Auth Token from localStorage if not already provided
 apiClient.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token')
-        if (token && config.headers) {
+        if (token && config.headers && !config.headers.Authorization) {
             config.headers.Authorization = `Bearer ${token}`
         }
         return config
@@ -22,15 +22,25 @@ apiClient.interceptors.request.use(
     (error) => Promise.reject(error)
 )
 
-// Response Interceptor: Catch 401 Unauthorized
+// Response Interceptor: Catch 401 Unauthorized for protected pages
 apiClient.interceptors.response.use(
     (response: AxiosResponse) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token')
-            localStorage.removeItem('user')
-            if (window.location.pathname !== '/') {
-                window.location.href = '/'
+            const url = error.config?.url || ''
+            const isAuthRoute =
+                url.includes('/auth/login') ||
+                url.includes('/auth/request-reset') ||
+                url.includes('/auth/validate-reset') ||
+                url.includes('/auth/reset') ||
+                url.includes('/auth/register/invitation')
+
+            if (!isAuthRoute) {
+                localStorage.removeItem('token')
+                localStorage.removeItem('user')
+                if (window.location.pathname.startsWith('/admin')) {
+                    window.location.href = '/login'
+                }
             }
         }
         return Promise.reject(error)

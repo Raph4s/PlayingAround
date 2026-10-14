@@ -21,10 +21,19 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials)) {
-            $token = Auth::user()->createToken("api");
+            $user = Auth::user();
+            $token = $user->createToken("api");
 
             return response()->json(
-                ["token" => $token->plainTextToken],
+                [
+                    "token" => $token->plainTextToken,
+                    "user" => [
+                        "id" => $user->id,
+                        "email" => $user->email,
+                        "fullname" => $user->fullname,
+                        "roles" => $user->roles->pluck("name")->all(),
+                    ],
+                ],
                 Response::HTTP_OK,
             );
         }

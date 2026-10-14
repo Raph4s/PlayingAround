@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-vue-next'
+import { supersetService } from '@/services/supersetService'
 
 const router = useRouter()
 
@@ -12,6 +13,7 @@ const password = ref('')
 const isTesting = ref(false)
 const testStatus = ref<'none' | 'success' | 'failed'>('none')
 const isSaving = ref(false)
+const errorMessage = ref('')
 
 function handleTestConnection() {
   if (!host.value.trim()) {
@@ -28,14 +30,24 @@ function handleTestConnection() {
   }, 600)
 }
 
-function handleSave() {
-  if (!host.value.trim() || !username.value.trim()) return
+async function handleSave() {
+  if (!host.value.trim() || !username.value.trim() || !password.value.trim()) return
 
   isSaving.value = true
-  setTimeout(() => {
-    isSaving.value = false
+  errorMessage.value = ''
+
+  try {
+    await supersetService.create({
+      host: host.value.trim(),
+      username: username.value.trim(),
+      password: password.value,
+    })
     router.push('/admin/superset')
-  }, 400)
+  } catch (err: any) {
+    errorMessage.value = err.response?.data?.message || 'Gagal menyimpan koneksi Superset.'
+  } finally {
+    isSaving.value = false
+  }
 }
 </script>
 
@@ -66,6 +78,15 @@ function handleSave() {
 
     <!-- Form Container -->
     <form @submit.prevent="handleSave" class="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-2xs space-y-5">
+      <!-- Error Feedback Banner -->
+      <div
+        v-if="errorMessage"
+        class="flex items-center gap-2 p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium"
+      >
+        <AlertCircle class="h-4 w-4 text-rose-600 shrink-0" />
+        <span>{{ errorMessage }}</span>
+      </div>
+
       <!-- Test Connection Feedback Banner -->
       <div
         v-if="testStatus === 'success'"
@@ -141,12 +162,14 @@ function handleSave() {
         >
           Batal
         </router-link>
+
         <button
           type="submit"
           :disabled="isSaving"
-          class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#2557c7] text-white text-xs font-semibold hover:bg-blue-700 active:bg-blue-800 shadow-2xs transition cursor-pointer disabled:opacity-70"
+          class="rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-5 py-2.5 text-xs font-semibold transition shadow-2xs cursor-pointer disabled:opacity-70"
         >
-          <span>{{ isSaving ? 'Menyimpan...' : 'Simpan Koneksi' }}</span>
+          <span v-if="!isSaving">Simpan</span>
+          <span v-else>Menyimpan...</span>
         </button>
       </div>
     </form>

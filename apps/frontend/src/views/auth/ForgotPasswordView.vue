@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, KeyRound, ShieldCheck } from 'lucide-vue-next'
 import logoUrl from '@/assets/logo.svg'
+import { authService } from '@/services/authService'
 
 const router = useRouter()
 
@@ -10,7 +11,7 @@ const email = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
 
-function handleRequestReset() {
+async function handleRequestReset() {
   errorMessage.value = ''
 
   if (!email.value.trim()) {
@@ -24,19 +25,24 @@ function handleRequestReset() {
     return
   }
 
-  // Mock test error check (Figma 1:2475)
-  if (email.value.toLowerCase().includes('error') || email.value.toLowerCase().includes('tidak')) {
-    errorMessage.value = 'Email tidak terdaftar.'
-    return
-  }
-
   isLoading.value = true
 
-  setTimeout(() => {
-    isLoading.value = false
+  try {
+    const res = await authService.requestReset({ email: email.value })
+    if (res && res.token) {
+      sessionStorage.setItem('reset_id', res.token)
+    }
     sessionStorage.setItem('reset_email', email.value)
     router.push('/verify-code')
-  }, 450)
+  } catch (error: any) {
+    if (error.response?.data?.message) {
+      errorMessage.value = error.response.data.message
+    } else {
+      errorMessage.value = 'Email tidak terdaftar atau gagal menghubungi server.'
+    }
+  } finally {
+    isLoading.value = false
+  }
 }
 
 function toggleErrorPreview() {

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Eye, EyeOff, Check, X, AlertCircle } from 'lucide-vue-next'
 import logoUrl from '@/assets/logo.svg'
+import { authService } from '@/services/authService'
 
 const router = useRouter()
+const route = useRoute()
 
 // View states matching Figma: 'form' (1:2604/1:2616) | 'success' (1:2628) | 'expired' (1:2637)
 const flowState = ref<'form' | 'success' | 'expired'>('form')
@@ -21,7 +23,13 @@ const showConfirmPassword = ref(false)
 const passwordMismatch = ref(false)
 const isLoading = ref(false)
 
-function handleSubmit() {
+const invitationToken =
+  (route.params.id as string) ||
+  (route.query.token as string) ||
+  (route.query.id as string) ||
+  ''
+
+async function handleSubmit() {
   passwordMismatch.value = false
 
   // Validate passwords match (Figma 1:2616: Password tidak sama)
@@ -32,8 +40,16 @@ function handleSubmit() {
 
   isLoading.value = true
 
-  setTimeout(() => {
-    // Save newly activated user credentials into localStorage for local login testing
+  try {
+    if (invitationToken) {
+      await authService.acceptInvitation({
+        id: invitationToken,
+        password: form.value.password,
+        fullname: form.value.fullName,
+      })
+    }
+
+    // Save newly activated user credentials into localStorage for local login testing fallback
     const activatedUser = {
       name: form.value.fullName,
       username: form.value.username,
@@ -44,9 +60,16 @@ function handleSubmit() {
     }
     localStorage.setItem('registered_user', JSON.stringify(activatedUser))
 
-    isLoading.value = false
     flowState.value = 'success'
-  }, 400)
+  } catch (error: any) {
+    if (error.response?.status === 404 || error.response?.status === 400) {
+      flowState.value = 'expired'
+    } else {
+      flowState.value = 'expired'
+    }
+  } finally {
+    isLoading.value = false
+  }
 }
 
 function handleGoToLogin() {
@@ -151,85 +174,98 @@ function handleContactAdmin() {
                 <Eye v-else class="h-4 w-4" />
               </button>
             </div>
-            <!-- Inline Error (Figma 1:2616: Password tidak sama) -->
-            <p v-if="passwordMismatch" class="text-[11px] text-red-500 mt-1 font-medium">
+            <!-- Error message Figma 1:2616: Password tidak sama -->
+            <p v-if="passwordMismatch" class="text-xs text-red-500 mt-1 font-medium">
               Password tidak sama
             </p>
           </div>
 
-          <!-- Tombol Aktivasi Akun -->
+          <!-- Button Submit -->
           <button
             type="submit"
             :disabled="isLoading"
-            class="w-full mt-2 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-2.5 text-xs font-semibold transition shadow-xs cursor-pointer disabled:opacity-70"
+            class="w-full mt-2 rounded-lg bg-blue-600 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-xs cursor-pointer disabled:opacity-50"
           >
-            <span v-if="!isLoading">Aktivasi Akun</span>
+            <span v-if="!isLoading">Aktifkan Akun</span>
             <span v-else>Memproses...</span>
           </button>
         </form>
 
-        <!-- Preview Switcher for states -->
-        <div class="mt-6 pt-4 border-t border-slate-100 flex justify-center gap-3 text-[11px] text-slate-400">
+        <!-- Preview Flow State Switchers (for Figma design inspection) -->
+        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
           <span>Pratinjau status:</span>
-          <button type="button" @click="flowState = 'success'" class="underline hover:text-blue-600 cursor-pointer">
-            Berhasil (1:2628)
-          </button>
-          <button type="button" @click="flowState = 'expired'" class="underline hover:text-red-600 cursor-pointer">
-            Gagal / Kedaluwarsa (1:2637)
-          </button>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              @click="flowState = 'success'"
+              class="underline hover:text-slate-600 cursor-pointer"
+            >
+              Berhasil (1:2628)
+            </button>
+            <button
+              type="button"
+              @click="flowState = 'expired'"
+              class="underline hover:text-slate-600 cursor-pointer"
+            >
+              Kedaluwarsa (1:2637)
+            </button>
+          </div>
         </div>
       </div>
 
       <!-- ================= 2. SUCCESS STATE (Figma 1:2628) ================= -->
       <div v-else-if="flowState === 'success'" class="text-center py-4 space-y-4">
-        <div class="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-          <Check class="h-6 w-6 stroke-[2.5]" />
+        <!-- Success Icon -->
+        <div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
+          <Check class="h-8 w-8 stroke-[2.5]" />
         </div>
 
         <div>
-          <h2 class="text-base font-bold text-slate-900">Akun Berhasil Diaktifkan</h2>
-          <p class="text-xs text-slate-500 mt-1.5 max-w-[280px] mx-auto leading-relaxed">
-            Akun Anda sudah aktif. Silakan masuk untuk melanjutkan.
+          <h2 class="text-xl font-bold text-slate-900 tracking-tight">Akun Berhasil Diaktifkan!</h2>
+          <p class="text-xs text-slate-500 mt-2 leading-relaxed max-w-xs mx-auto">
+            Akun Anda sudah aktif dan siap digunakan. Silakan masuk untuk mulai menggunakan layanan Jogja Center.
           </p>
         </div>
 
         <button
           type="button"
           @click="handleGoToLogin"
-          class="w-full mt-4 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-2.5 text-xs font-semibold transition shadow-xs cursor-pointer"
+          class="w-full mt-4 rounded-lg bg-blue-600 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-xs cursor-pointer"
         >
-          Masuk
+          Masuk ke Akun
         </button>
       </div>
 
       <!-- ================= 3. EXPIRED STATE (Figma 1:2637) ================= -->
       <div v-else-if="flowState === 'expired'" class="text-center py-4 space-y-4">
-        <div class="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
-          <X class="h-6 w-6 stroke-[2.5]" />
+        <!-- Expired Warning Icon -->
+        <div class="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
+          <X class="h-8 w-8 stroke-[2.5]" />
         </div>
 
         <div>
-          <h2 class="text-base font-bold text-slate-900">Aktivasi Akun Gagal</h2>
-          <p class="text-xs text-slate-500 mt-1.5 max-w-[280px] mx-auto leading-relaxed">
-            Tautan aktivasi sudah tidak berlaku atau telah kedaluwarsa.
+          <h2 class="text-xl font-bold text-slate-900 tracking-tight">Tautan Kedaluwarsa</h2>
+          <p class="text-xs text-slate-500 mt-2 leading-relaxed max-w-xs mx-auto">
+            Tautan aktivasi akun sudah tidak berlaku atau sudah pernah digunakan. Hubungi admin untuk mendapatkan tautan baru.
           </p>
         </div>
 
-        <button
-          type="button"
-          @click="handleContactAdmin"
-          class="w-full mt-4 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-2.5 text-xs font-semibold transition shadow-xs cursor-pointer"
-        >
-          Hubungi Administrator
-        </button>
-
-        <button
-          type="button"
-          @click="flowState = 'form'"
-          class="w-full text-center text-xs text-slate-500 hover:text-slate-800 py-1 transition cursor-pointer"
-        >
-          Kembali ke form
-        </button>
+        <div class="space-y-2 mt-4">
+          <button
+            type="button"
+            @click="handleContactAdmin"
+            class="w-full rounded-lg bg-blue-600 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-xs cursor-pointer"
+          >
+            Hubungi Admin
+          </button>
+          <button
+            type="button"
+            @click="handleGoToLogin"
+            class="w-full rounded-lg border border-slate-200 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 cursor-pointer"
+          >
+            Kembali ke Halaman Masuk
+          </button>
+        </div>
       </div>
     </div>
   </div>

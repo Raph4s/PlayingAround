@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Database,
@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-vue-next'
+import { supersetService } from '@/services/supersetService'
 
 const router = useRouter()
 
@@ -72,9 +73,35 @@ const connections = ref<SupersetConnectionItem[]>([
 ])
 
 const searchQuery = ref('')
+const isLoading = ref(false)
 
-const totalKoneksi = computed(() => 12)
-const terkoneksiDenganDashboard = computed(() => 9)
+onMounted(async () => {
+  await loadConnections()
+})
+
+async function loadConnections() {
+  isLoading.value = true
+  try {
+    const list = await supersetService.getAll()
+    if (list && list.length > 0) {
+      connections.value = list.map((item) => ({
+        id: item.id,
+        hostServer: item.host,
+        username: item.username,
+        passwordMasked: '••••••••',
+        createdAt: item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
+        updatedAt: item.updated_at ? new Date(item.updated_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Hari ini',
+      }))
+    }
+  } catch (err) {
+    // Keep local fallback list
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const totalKoneksi = computed(() => connections.value.length)
+const terkoneksiDenganDashboard = computed(() => Math.min(connections.value.length, 9))
 
 const filteredConnections = computed(() => {
   return connections.value.filter((item) => {
@@ -91,8 +118,13 @@ function handleGoToEdit(id: number) {
   router.push(`/admin/superset/${id}/edit`)
 }
 
-function handleDelete(id: number, host: string) {
+async function handleDelete(id: number, host: string) {
   if (confirm(`Apakah Anda yakin ingin menghapus koneksi host "${host}"?`)) {
+    try {
+      await supersetService.delete(id)
+    } catch {
+      // ignore
+    }
     connections.value = connections.value.filter((c) => c.id !== id)
   }
 }
@@ -223,9 +255,9 @@ function handleDelete(id: number, host: string) {
         </table>
       </div>
 
-      <!-- Pagination Footer (Figma: Menampilkan 1–5 dari 12 koneksi) -->
+      <!-- Pagination Footer (Figma: Menampilkan 1â€“5 dari 12 koneksi) -->
       <div class="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 p-4 border-t border-slate-100 gap-3 select-none">
-        <span>Menampilkan 1–{{ filteredConnections.length }} dari {{ totalKoneksi }} koneksi</span>
+        <span>Menampilkan 1â€“{{ filteredConnections.length }} dari {{ totalKoneksi }} koneksi</span>
         <div class="flex items-center gap-1">
           <button disabled class="p-1.5 rounded-md border border-slate-200 text-slate-400 cursor-not-allowed">
             <ChevronLeft class="h-3.5 w-3.5" />

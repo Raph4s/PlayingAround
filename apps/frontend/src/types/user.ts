@@ -12,12 +12,12 @@ export interface AdminUserItem {
 }
 
 export interface InviteUserPayload {
-    name: string
+    name?: string
     email: string
     role: string
-    unitKerja: string
+    unitKerja?: string
     invitationMessage?: string
-    autoActivate: boolean
+    autoActivate?: boolean
 }
 
 export interface EditUserPayload {

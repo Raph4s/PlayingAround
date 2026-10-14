@@ -50,14 +50,23 @@ class UserController extends Controller
         );
     }
 
-    public function acceptInvitation(Request $request, string $invitationId)
+    public function acceptInvitation(Request $request, ?string $invitationId = null)
     {
-        // TODO: ngikut FE
-        $validation = $request->validate([
-            "id" => ["required", "email", "disposable_email"],
+        $id = $invitationId ?? $request->input("id") ?? $request->input("token");
+
+        if (!$id) {
+            return response()->json(
+                ["message" => "Invitation ID is required."],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $request->validate([
+            "password" => ["required", "string", "min:8"],
+            "fullname" => ["nullable", "string"],
         ]);
 
-        $invitation = Invitation::where("id", $invitationId)
+        $invitation = Invitation::where("id", $id)
             ->where("expire_at", ">", CarbonImmutable::now())
             ->first();
 
@@ -71,12 +80,18 @@ class UserController extends Controller
         $user = User::where("email", $invitation->email)->first();
 
         if ($user) {
-            $user->roles()->attach($invitation->role_id);
+            $user->password = $request->input("password");
+            if ($request->filled("fullname")) {
+                $user->fullname = $request->input("fullname");
+            }
+            $user->save();
+            $user->roles()->syncWithoutDetaching([$invitation->role_id]);
             $invitation->update(["accepted_at" => CarbonImmutable::now()]);
         } else {
             $user = User::create([
                 "email" => $invitation->email,
-                "password" => str()->random(16),
+                "fullname" => $request->input("fullname") ?? explode("@", $invitation->email)[0],
+                "password" => $request->input("password"),
             ]);
 
             $user->roles()->attach($invitation->role_id);

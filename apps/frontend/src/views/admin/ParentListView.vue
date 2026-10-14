@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import {
   FolderTree,
   Search,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-vue-next'
 
 const router = useRouter()
+const { canCreateParent } = useAuth()
 
 export interface CategoryItem {
   id: number
@@ -188,8 +190,9 @@ function handleDeleteCategory(id: number, name: string) {
         </div>
       </div>
 
-      <!-- Tambah Kategori Button -->
+      <!-- Tambah Kategori Button (Hidden for Admin, only Superadmin can create) -->
       <button
+        v-if="canCreateParent"
         type="button"
         @click="handleGoToCreate"
         class="w-full sm:w-auto rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700 transition cursor-pointer shrink-0"
