@@ -1,0 +1,28 @@
+<?php
+
+use App\Http\Controllers\AssignRoleController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Route;
+
+Route::prefix("auth")->group(function () {
+    Route::post("/login", [AuthController::class, "login"])->name("login");
+    Route::post("/request-reset", [AuthController::class, "generateReset"]);
+    Route::post("/validate-reset", [AuthController::class, "validateReset"]);
+    Route::post("/reset", [AuthController::class, "resetUser"]);
+    Route::post("/register/invitation", [UserController::class, "acceptInvitation"]);
+});
+
+Route::middleware("auth:sanctum")->group(function () {
+    Route::prefix("auth")->group(function () {
+        Route::post("/logout", [AuthController::class, "logout"]);
+    });
+});
+
+Route::middleware(["auth:sanctum", "role:superadmin"])->group(function () {
+    Route::prefix("app")->group(function () {
+        Route::prefix("user")->group(function () {
+            Route::post("/invite", [UserController::class, "invite"]);
+        });
+    });
+});
