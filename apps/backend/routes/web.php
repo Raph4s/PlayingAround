@@ -8,6 +8,10 @@ Route::get("/", function () {
     return view("welcome");
 });
 
+Route::get('/activate/{id}', function ($id) {
+    return redirect(rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/') . '/activate/' . $id);
+});
+
 Route::get("/db-check", function (Request $request) {
     try {
         // Fetch all tables

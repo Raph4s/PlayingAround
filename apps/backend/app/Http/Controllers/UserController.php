@@ -13,6 +13,60 @@ use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends Controller
 {
+    public function index()
+    {
+        $users = User::with("roles")->get();
+        return response()->json(["data" => $users], Response::HTTP_OK);
+    }
+
+    public function show(int $id)
+    {
+        $user = User::with("roles")->findOrFail($id);
+        return response()->json(["data" => $user], Response::HTTP_OK);
+    }
+
+    public function update(Request $request, int $id)
+    {
+        $user = User::findOrFail($id);
+
+        $validated = $request->validate([
+            "fullname" => ["sometimes", "string", "max:255"],
+            "email" => ["sometimes", "email", "unique:users,email," . $user->id],
+            "password" => ["sometimes", "string", "min:8"],
+        ]);
+
+        if (isset($validated["fullname"])) {
+            $user->fullname = $validated["fullname"];
+        }
+        if (isset($validated["email"])) {
+            $user->email = $validated["email"];
+        }
+        if (isset($validated["password"])) {
+            $user->password = $validated["password"];
+        }
+
+        $user->save();
+
+        if ($request->has("role_id")) {
+            $user->roles()->sync([$request->input("role_id")]);
+        }
+
+        return response()->json([
+            "message" => "User updated successfully.",
+            "data" => $user->load("roles"),
+        ], Response::HTTP_OK);
+    }
+
+    public function destroy(int $id)
+    {
+        $user = User::findOrFail($id);
+        $user->delete();
+
+        return response()->json([
+            "message" => "User deleted successfully.",
+        ], Response::HTTP_OK);
+    }
+
     public function invite(Request $request)
     {
         $validation = $request->validate([

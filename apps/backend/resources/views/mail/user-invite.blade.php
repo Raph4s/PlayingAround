@@ -28,7 +28,7 @@
                                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
                                     <tr>
                                         <td style="border-radius: 0.25em; background: #007bff; text-align: center;">
-                                            <a href="{{ url('/activate/' . $link) }}" style="display: inline-block; padding: 0.85em 1.5em; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 1rem; font-family: inherit; border-radius: 6px;">Buat Akun</a>
+                                            <a href="{{ rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/') . '/activate/' . $link }}" style="display: inline-block; padding: 0.85em 1.5em; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 1rem; font-family: inherit; border-radius: 6px;">Buat Akun</a>
                                         </td>
                                     </tr>
                                 </table>
